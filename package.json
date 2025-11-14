@@ -1,0 +1,23 @@
+{
+  "name": "vite-plugin-font-subset",
+  "version": "0.1.0",
+  "description": "Vite plugin to subset fonts to WOFF2 based on project character usage",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": "./src/index.js",
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "font",
+    "subset",
+    "woff2"
+  ],
+  "peerDependencies": {
+    "vite": "^4.0.0 || ^5.0.0"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.3",
+    "subset-font": "^2.4.0"
+  },
+  "license": "MIT"
+}
