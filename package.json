@@ -1,10 +1,25 @@
 {
   "name": "@fe-fast/vite-plugin-font-subset",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Vite plugin to subset fonts to WOFF2 based on project character usage",
   "type": "module",
-  "main": "src/index.js",
-  "exports": "./src/index.js",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup"
+  },
   "keywords": [
     "vite",
     "vite-plugin",
@@ -27,5 +42,10 @@
     "fast-glob": "^3.3.3",
     "subset-font": "^2.4.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
 }
