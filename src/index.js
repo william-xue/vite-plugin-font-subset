@@ -28,8 +28,8 @@ export default function fontSubsetPlugin(options = {}) {
 
 	let isBuild = false
 	let projectRoot = process.cwd()
-	let base = '/'
-	const cssFiles = new Set()
+	let config = null
+	const cssFiles = new Map() // cssPath -> { content, fileName }
 
 	return {
 		name: 'vite-plugin-font-subset',
@@ -37,7 +37,7 @@ export default function fontSubsetPlugin(options = {}) {
 		configResolved(resolvedConfig) {
 			isBuild = resolvedConfig.command === 'build'
 			projectRoot = resolvedConfig.root || process.cwd()
-			base = resolvedConfig.base || '/'
+			config = resolvedConfig
 		},
 
 		async buildStart() {
@@ -72,7 +72,10 @@ export default function fontSubsetPlugin(options = {}) {
 						const cssContent = buildCss(entries)
 						fs.writeFileSync(cssPath, cssContent)
 						console.log(`   生成 CSS: ${path.relative(projectRoot, cssPath)}`)
-						cssFiles.add(cssPath)
+						
+						// 保存 CSS 内容用于后续注入
+						const fileName = path.basename(cssPath)
+						cssFiles.set(cssPath, { content: cssContent, fileName })
 					}
 				}
 
@@ -88,32 +91,22 @@ export default function fontSubsetPlugin(options = {}) {
 				return
 			}
 
-			const normalizedBase = base.endsWith('/') ? base : `${base}/`
 			const tags = []
 
-			for (const cssPath of cssFiles) {
-				const relativePath = path.relative(projectRoot, cssPath).replace(/\\/g, '/')
-
-				// 仅注入项目根目录内的文件，避免打包路径异常
-				if (relativePath.startsWith('..')) {
-					console.warn(`跳过自动注入，CSS 不在项目根目录内: ${cssPath}`)
-					continue
-				}
-
-				const href = `${normalizedBase}${relativePath}`
+			// 直接将 CSS 内容作为内联样式注入，确保构建后可用
+			for (const [cssPath, { content }] of cssFiles) {
+				console.log(`   自动注入 CSS: ${path.relative(projectRoot, cssPath)}`)
+				
 				tags.push({
-					tag: 'link',
-					attrs: {
-						rel: 'stylesheet',
-						href
-					},
+					tag: 'style',
+					children: content,
 					injectTo: 'head'
 				})
 			}
 
 			if (tags.length === 0) return
 
-			return { html, tags }
+			return tags
 		}
 	}
 }
