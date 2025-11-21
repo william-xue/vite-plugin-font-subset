@@ -1,6 +1,6 @@
 {
   "name": "@fe-fast/vite-plugin-font-subset",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Vite plugin to subset fonts to WOFF2 based on project character usage",
   "type": "module",
   "main": "./dist/index.cjs",
