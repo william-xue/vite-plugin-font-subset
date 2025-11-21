@@ -18,6 +18,8 @@ export default function fontSubsetPlugin(options = {}) {
 		outputDir = 'subset',
 		// 是否生成 font.css
 		generateCss = true,
+		// 是否自动把生成的 CSS 注入构建产物
+		injectCss = true,
 		// 额外字符集
 		extraChars = '',
 		// 是否启用（默认仅在生产构建时启用）
@@ -26,6 +28,8 @@ export default function fontSubsetPlugin(options = {}) {
 
 	let isBuild = false
 	let projectRoot = process.cwd()
+	let base = '/'
+	const cssFiles = new Set()
 
 	return {
 		name: 'vite-plugin-font-subset',
@@ -33,9 +37,11 @@ export default function fontSubsetPlugin(options = {}) {
 		configResolved(resolvedConfig) {
 			isBuild = resolvedConfig.command === 'build'
 			projectRoot = resolvedConfig.root || process.cwd()
+			base = resolvedConfig.base || '/'
 		},
 
 		async buildStart() {
+			cssFiles.clear()
 			if (!enabled || !isBuild || fonts.length === 0) {
 				return
 			}
@@ -66,6 +72,7 @@ export default function fontSubsetPlugin(options = {}) {
 						const cssContent = buildCss(entries)
 						fs.writeFileSync(cssPath, cssContent)
 						console.log(`   生成 CSS: ${path.relative(projectRoot, cssPath)}`)
+						cssFiles.add(cssPath)
 					}
 				}
 
@@ -74,6 +81,39 @@ export default function fontSubsetPlugin(options = {}) {
 				console.error('❌ 字体子集化失败:', error)
 				throw error
 			}
+		},
+
+		transformIndexHtml(html) {
+			if (!enabled || !isBuild || !generateCss || !injectCss || cssFiles.size === 0) {
+				return
+			}
+
+			const normalizedBase = base.endsWith('/') ? base : `${base}/`
+			const tags = []
+
+			for (const cssPath of cssFiles) {
+				const relativePath = path.relative(projectRoot, cssPath).replace(/\\/g, '/')
+
+				// 仅注入项目根目录内的文件，避免打包路径异常
+				if (relativePath.startsWith('..')) {
+					console.warn(`跳过自动注入，CSS 不在项目根目录内: ${cssPath}`)
+					continue
+				}
+
+				const href = `${normalizedBase}${relativePath}`
+				tags.push({
+					tag: 'link',
+					attrs: {
+						rel: 'stylesheet',
+						href
+					},
+					injectTo: 'head'
+				})
+			}
+
+			if (tags.length === 0) return
+
+			return { html, tags }
 		}
 	}
 }

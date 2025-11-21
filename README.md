@@ -8,6 +8,7 @@
 - **按字体生成子集**：使用 [`subset-font`](https://github.com/foliojs/subset-font) 生成 `.woff2` 子集文件。
 - **自动生成 CSS**：在字体所在目录生成统一的 `font.css`，包含 `@font-face` 声明。
 - **按目录合并**：同一目录下多字体会合并到一个 `font.css` 中，避免互相覆盖。
+- **可选自动注入**：构建时可自动把生成的 `font.css` 注入 HTML，无需手动引入。
 - **仅在构建阶段运行**：默认只在 `vite build` 时执行，不影响开发速度。
 
 ## 安装
@@ -59,6 +60,9 @@ export default defineConfig({
       // 可选：是否生成 font.css，默认 true
       generateCss: true,
 
+      // 可选：是否自动把 font.css 注入 HTML，默认 true
+      injectCss: true,
+
       // 可选：额外需要保留的字符（例如接口动态返回、运行时生成的字符）
       extraChars: '①②③',
 
@@ -94,7 +98,18 @@ export default defineConfig({
 
 ### 在项目中使用生成的字体
 
-插件只负责**生成文件**，不会自动注入到 HTML 中，你需要手动引入生成的 `font.css`：
+默认情况下，插件会在构建时自动把生成的 `font.css` 注入到最终的 HTML 中，无需手动引入。直接在 CSS 中使用即可：
+
+```css
+body {
+  font-family: 'Source Han Sans CN', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+}
+```
+
+#### 手动引入（可选）
+
+如果你将 `injectCss` 设为 `false`，或需要自定义加载顺序/作用域，可以手动引入生成的 `font.css`：
 
 在入口文件中：
 
@@ -107,15 +122,6 @@ import '@/assets/fonts/font.css'
 
 ```html
 <link rel="stylesheet" href="/src/assets/fonts/font.css" />
-```
-
-之后就可以在项目中直接使用：
-
-```css
-body {
-  font-family: 'Source Han Sans CN', system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', sans-serif;
-}
 ```
 
 ## 配置说明
@@ -153,6 +159,12 @@ interface FontConfig {
 - 类型：`boolean`
 - 默认：`true`
 - 作用：是否在字体目录生成 `font.css`。如果你有自己的一套 CSS 管理方式，也可以关掉，然后在构建后手动处理生成的 `.woff2`。
+
+### injectCss
+
+- 类型：`boolean`
+- 默认：`true`
+- 作用：是否在构建阶段自动把生成的 `font.css` 注入到最终 HTML。关闭后需自行在入口或 HTML 中引入。
 
 ### extraChars
 
@@ -206,6 +218,7 @@ and generates a `font.css` file with corresponding `@font-face` rules.
 - Automatically collect characters from your source files.
 - Generate `.woff2` subsets for each configured font.
 - Emit a merged `font.css` in each font directory to avoid overwrite issues.
+- Optionally inject generated `font.css` into HTML during build.
 - Run only during `vite build`, keeping `vite dev` fast.
 
 ### Installation
@@ -240,6 +253,7 @@ export default defineConfig({
       scanDirs: ['src/**/*.{vue,ts,tsx,js,jsx}'],
       outputDir: 'subset',
       generateCss: true,
+      injectCss: true,
       extraChars: '①②③',
       enabled: true
     })
@@ -255,20 +269,12 @@ During build, the plugin will:
 
 ### Using Generated Fonts
 
-The plugin only **generates files**. You need to import the generated `font.css`
-by yourself, for example in your main entry:
+By default, the plugin automatically injects generated `font.css` into the final
+HTML during build, so you don't need to manually import it.
 
-```ts
-import '@/assets/fonts/font.css'
-```
-
-or in `index.html`:
-
-```html
-<link rel="stylesheet" href="/src/assets/fonts/font.css" />
-```
-
-Then you can use the configured `font-family` in your styles:
+If you set `injectCss` to `false` or need custom ordering/scope, you can import
+`font.css` manually in your entry or `index.html`. Then you can use the configured
+`font-family` in your styles:
 
 ```css
 body {
@@ -283,6 +289,7 @@ body {
 - `scanDirs`: glob patterns to search for used characters.
 - `outputDir`: folder name relative to the font file directory where subsets are written.
 - `generateCss`: whether to emit `font.css` automatically.
+- `injectCss`: whether to inject generated `font.css` into HTML during build.
 - `extraChars`: extra characters to keep that may not appear in source files.
 - `enabled`: whether the plugin is enabled; it only runs during `vite build`.
 
