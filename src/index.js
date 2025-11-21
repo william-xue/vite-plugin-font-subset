@@ -62,7 +62,7 @@ export default function fontSubsetPlugin(options = {}) {
 				for (const fontConfig of fonts) {
 					const result = await processFont(fontConfig, chars, outputDir, projectRoot)
 					if (result) {
-						const { cssDir, cssEntry, buffer, fontPath } = result
+						const { cssDir, cssEntry, buffer } = result
 						
 						if (!cssGroups.has(cssDir)) {
 							cssGroups.set(cssDir, { entries: [], fonts: [] })
@@ -70,7 +70,7 @@ export default function fontSubsetPlugin(options = {}) {
 						cssGroups.get(cssDir).entries.push(cssEntry)
 						cssGroups.get(cssDir).fonts.push({
 							relativePath: cssEntry.relativePath,
-							fileName: path.basename(fontPath),
+							fileName: path.basename(cssEntry.relativePath),
 							buffer
 						})
 					}
@@ -276,7 +276,6 @@ async function processFont(fontConfig, chars, outputDir, projectRoot) {
 
 	return {
 		cssDir,
-		fontPath: outputPath,
 		buffer: subsetBuffer,
 		cssEntry: {
 			family,
