@@ -30,8 +30,8 @@ export default function fontSubsetPlugin(options = {}) {
 	let isBuild = false
 	let projectRoot = process.cwd()
 	let config = null
-	const fontAssets = [] // 存储字体文件信息 { cssDir, entries, fonts: [{ fileName, relativePath, buffer }] }
-	const emittedCssFiles = []
+	const assetsToEmit = [] // 存储待发射的资源 { fileName, source }
+	const emittedCssFiles = [] // 存储 CSS 文件名供注入
 
 	return {
 		name: 'vite-plugin-font-subset',
@@ -43,7 +43,7 @@ export default function fontSubsetPlugin(options = {}) {
 		},
 
 		async buildStart() {
-			fontAssets.length = 0
+			assetsToEmit.length = 0
 			emittedCssFiles.length = 0
 			
 			if (!enabled || !isBuild || fonts.length === 0) {
@@ -76,8 +76,12 @@ export default function fontSubsetPlugin(options = {}) {
 					}
 				}
 
-				// 3. 写入开发态 CSS（聚合后写一次），并保存信息供 generateBundle 使用
+				const base = config.base || '/'
+				const assetsDir = config.build?.assetsDir || 'assets'
+
+				// 3. 处理资源：生成开发态 CSS，并准备构建态资源
 				for (const [cssDir, { entries, fonts }] of cssGroups) {
+					// 3.1 生成开发态 CSS (写入源目录)
 					if (generateCss) {
 						const cssContent = buildCss(entries)
 						const cssPath = path.join(cssDir, 'font.css')
@@ -85,7 +89,45 @@ export default function fontSubsetPlugin(options = {}) {
 						console.log(`   生成开发用 CSS: ${path.relative(projectRoot, cssPath)}`)
 					}
 
-					fontAssets.push({ cssDir, entries, fonts })
+					// 3.2 准备构建态资源 (计算路径和内容)
+					const fontFileNames = new Map()
+					
+					// 处理字体文件
+					for (const font of fonts) {
+						const hashPrefix = hashString(`${cssDir}:${font.fileName}`)
+						const fileName = `${assetsDir}/fonts/${hashPrefix}-${font.fileName}`
+
+						assetsToEmit.push({
+							fileName,
+							source: font.buffer
+						})
+						
+						fontFileNames.set(font.relativePath, fileName)
+					}
+
+					// 处理 CSS 文件
+					if (generateCss) {
+						// 更新 CSS 中的字体路径为构建产物路径
+						const updatedEntries = entries.map(entry => ({
+							...entry,
+							relativePath: fontFileNames.get(entry.relativePath) || entry.relativePath
+						}))
+
+						// 生成 CSS 内容（路径已更新为构建后的路径）
+						const cssContent = buildCssForBundle(updatedEntries, base)
+						
+						// 计算 CSS 文件名
+						const cssHash = hashString(cssContent)
+						const cssFileName = `${assetsDir}/fonts/font-${cssHash}.css`
+						
+						assetsToEmit.push({
+							fileName: cssFileName,
+							source: cssContent
+						})
+
+						emittedCssFiles.push(cssFileName)
+						console.log(`   准备发射 CSS: ${cssFileName}`)
+					}
 				}
 
 				console.log('\n✅ 字体子集化完成！\n')
@@ -96,52 +138,17 @@ export default function fontSubsetPlugin(options = {}) {
 		},
 
 		generateBundle() {
-			if (!enabled || !isBuild || fontAssets.length === 0) {
+			if (!enabled || !isBuild || assetsToEmit.length === 0) {
 				return
 			}
 
-			const base = config.base || '/'
-			const assetsDir = config.build?.assetsDir || 'assets'
-
-			// 发射字体文件和 CSS 文件到构建产物
-			for (const { cssDir, entries, fonts } of fontAssets) {
-				// 1. 发射字体文件
-				const fontFileNames = new Map()
-				for (const font of fonts) {
-					const hashPrefix = hashString(`${cssDir}:${font.fileName}`)
-					const fileName = `${assetsDir}/fonts/${hashPrefix}-${font.fileName}`
-
-					this.emitFile({
-						type: 'asset',
-						fileName,
-						source: font.buffer
-					})
-					
-					fontFileNames.set(font.relativePath, fileName)
-				}
-
-				if (generateCss) {
-					// 2. 更新 CSS 中的字体路径为构建产物路径
-					const updatedEntries = entries.map(entry => ({
-						...entry,
-						relativePath: fontFileNames.get(entry.relativePath) || entry.relativePath
-					}))
-
-					// 3. 生成 CSS 内容（路径已更新为构建后的路径）
-					const cssContent = buildCssForBundle(updatedEntries, base)
-					
-					// 4. 发射 CSS 文件，使用内容哈希确保稳定
-					const cssHash = hashString(cssContent)
-					const cssFileName = `${assetsDir}/fonts/font-${cssHash}.css`
-					this.emitFile({
-						type: 'asset',
-						fileName: cssFileName,
-						source: cssContent
-					})
-
-					emittedCssFiles.push(cssFileName)
-					console.log(`   发射 CSS 到构建产物: ${cssFileName}`)
-				}
+			// 统一发射所有资源
+			for (const asset of assetsToEmit) {
+				this.emitFile({
+					type: 'asset',
+					fileName: asset.fileName,
+					source: asset.source
+				})
 			}
 		},
 
