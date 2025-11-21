@@ -7,6 +7,7 @@ import fs from 'fs'
 import path from 'path'
 import fg from 'fast-glob'
 import subsetFont from 'subset-font'
+import crypto from 'crypto'
 
 export default function fontSubsetPlugin(options = {}) {
 	const {
@@ -29,8 +30,8 @@ export default function fontSubsetPlugin(options = {}) {
 	let isBuild = false
 	let projectRoot = process.cwd()
 	let config = null
-	const fontAssets = [] // 存储字体文件信息 { fontPath, cssDir, cssEntries }
-	const emittedCssFiles = new Map() // cssDir -> emitted CSS fileName
+	const fontAssets = [] // 存储字体文件信息 { cssDir, entries, fonts: [{ fileName, relativePath, buffer }] }
+	const emittedCssFiles = []
 
 	return {
 		name: 'vite-plugin-font-subset',
@@ -43,7 +44,7 @@ export default function fontSubsetPlugin(options = {}) {
 
 		async buildStart() {
 			fontAssets.length = 0
-			emittedCssFiles.clear()
+			emittedCssFiles.length = 0
 			
 			if (!enabled || !isBuild || fonts.length === 0) {
 				return
@@ -59,23 +60,32 @@ export default function fontSubsetPlugin(options = {}) {
 				// 2. 处理每个字体，收集信息
 				const cssGroups = new Map()
 				for (const fontConfig of fonts) {
-					const result = await processFont(fontConfig, chars, outputDir, projectRoot, this)
+					const result = await processFont(fontConfig, chars, outputDir, projectRoot)
 					if (result) {
-						const { cssDir, fontPath, cssEntry } = result
+						const { cssDir, cssEntry, buffer, fontPath } = result
 						
 						if (!cssGroups.has(cssDir)) {
-							cssGroups.set(cssDir, { entries: [], fontPaths: [] })
+							cssGroups.set(cssDir, { entries: [], fonts: [] })
 						}
 						cssGroups.get(cssDir).entries.push(cssEntry)
-						cssGroups.get(cssDir).fontPaths.push(fontPath)
+						cssGroups.get(cssDir).fonts.push({
+							relativePath: cssEntry.relativePath,
+							fileName: path.basename(fontPath),
+							buffer
+						})
 					}
 				}
 
-				// 3. 保存信息供 generateBundle 使用
-				if (generateCss && cssGroups.size > 0) {
-					for (const [cssDir, { entries, fontPaths }] of cssGroups) {
-						fontAssets.push({ cssDir, entries, fontPaths })
+				// 3. 写入开发态 CSS（聚合后写一次），并保存信息供 generateBundle 使用
+				for (const [cssDir, { entries, fonts }] of cssGroups) {
+					if (generateCss) {
+						const cssContent = buildCss(entries)
+						const cssPath = path.join(cssDir, 'font.css')
+						fs.writeFileSync(cssPath, cssContent)
+						console.log(`   生成开发用 CSS: ${path.relative(projectRoot, cssPath)}`)
 					}
+
+					fontAssets.push({ cssDir, entries, fonts })
 				}
 
 				console.log('\n✅ 字体子集化完成！\n')
@@ -85,8 +95,8 @@ export default function fontSubsetPlugin(options = {}) {
 			}
 		},
 
-		generateBundle(options, bundle) {
-			if (!enabled || !isBuild || !generateCss || fontAssets.length === 0) {
+		generateBundle() {
+			if (!enabled || !isBuild || fontAssets.length === 0) {
 				return
 			}
 
@@ -94,53 +104,49 @@ export default function fontSubsetPlugin(options = {}) {
 			const assetsDir = config.build?.assetsDir || 'assets'
 
 			// 发射字体文件和 CSS 文件到构建产物
-			for (const { cssDir, entries, fontPaths } of fontAssets) {
+			for (const { cssDir, entries, fonts } of fontAssets) {
 				// 1. 发射字体文件
 				const fontFileNames = new Map()
-				for (const fontPath of fontPaths) {
-					const fontBuffer = fs.readFileSync(fontPath)
-					const fontName = path.basename(fontPath)
-					const relativeToCssDir = path.relative(cssDir, fontPath).replace(/\\/g, '/')
-					
-					// 生成稳定的文件名：assets/fonts/xxx.woff2
-					const fileName = `${assetsDir}/fonts/${fontName}`
-					
+				for (const font of fonts) {
+					const hashPrefix = hashString(`${cssDir}:${font.fileName}`)
+					const fileName = `${assetsDir}/fonts/${hashPrefix}-${font.fileName}`
+
 					this.emitFile({
 						type: 'asset',
 						fileName,
-						source: fontBuffer
+						source: font.buffer
 					})
 					
-					fontFileNames.set(relativeToCssDir, fileName)
+					fontFileNames.set(font.relativePath, fileName)
 				}
 
-				// 2. 更新 CSS 中的字体路径为相对于 base 的绝对路径
-				const updatedEntries = entries.map(entry => ({
-					...entry,
-					// 将相对路径转换为从 base 开始的路径
-					relativePath: fontFileNames.get(entry.relativePath) || entry.relativePath
-				}))
+				if (generateCss) {
+					// 2. 更新 CSS 中的字体路径为构建产物路径
+					const updatedEntries = entries.map(entry => ({
+						...entry,
+						relativePath: fontFileNames.get(entry.relativePath) || entry.relativePath
+					}))
 
-				// 3. 生成 CSS 内容（路径已更新为构建后的路径）
-				const cssContent = buildCssForBundle(updatedEntries, base)
-				
-				// 4. 发射 CSS 文件
-				const cssFileName = `${assetsDir}/fonts/font-${Date.now()}.css`
-				const emittedRef = this.emitFile({
-					type: 'asset',
-					fileName: cssFileName,
-					source: cssContent
-				})
+					// 3. 生成 CSS 内容（路径已更新为构建后的路径）
+					const cssContent = buildCssForBundle(updatedEntries, base)
+					
+					// 4. 发射 CSS 文件，使用内容哈希确保稳定
+					const cssHash = hashString(cssContent)
+					const cssFileName = `${assetsDir}/fonts/font-${cssHash}.css`
+					this.emitFile({
+						type: 'asset',
+						fileName: cssFileName,
+						source: cssContent
+					})
 
-				// 保存发射的 CSS 文件名，供 transformIndexHtml 使用
-				emittedCssFiles.set(cssDir, cssFileName)
-				
-				console.log(`   发射 CSS 到构建产物: ${cssFileName}`)
+					emittedCssFiles.push(cssFileName)
+					console.log(`   发射 CSS 到构建产物: ${cssFileName}`)
+				}
 			}
 		},
 
 		transformIndexHtml() {
-			if (!enabled || !isBuild || !generateCss || !injectCss || emittedCssFiles.size === 0) {
+			if (!enabled || !isBuild || !generateCss || !injectCss || emittedCssFiles.length === 0) {
 				return
 			}
 
@@ -148,7 +154,7 @@ export default function fontSubsetPlugin(options = {}) {
 			const normalizedBase = base.endsWith('/') ? base : `${base}/`
 			const tags = []
 
-			for (const cssFileName of emittedCssFiles.values()) {
+			for (const cssFileName of emittedCssFiles) {
 				const href = `${normalizedBase}${cssFileName}`
 				console.log(`   自动注入 CSS 到 HTML: ${href}`)
 				
@@ -206,7 +212,7 @@ async function collectCharacters(scanDirs, extraChars, rootDir) {
 /**
  * 处理单个字体文件
  */
-async function processFont(fontConfig, chars, outputDir, projectRoot, pluginContext) {
+async function processFont(fontConfig, chars, outputDir, projectRoot) {
 	const {
 		src, // 源字体路径
 		family, // 字体族名称
@@ -261,20 +267,10 @@ async function processFont(fontConfig, chars, outputDir, projectRoot, pluginCont
 	const cssDir = srcDir
 	const relativePath = path.relative(cssDir, outputPath).replace(/\\/g, '/')
 
-	// 同时在源目录生成 font.css，方便开发时使用
-	const cssPath = path.join(cssDir, 'font.css')
-	const cssContent = buildCss([{
-		family,
-		style,
-		weight,
-		relativePath
-	}])
-	fs.writeFileSync(cssPath, cssContent)
-	console.log(`   生成开发用 CSS: ${path.relative(projectRoot, cssPath)}`)
-
 	return {
 		cssDir,
 		fontPath: outputPath,
+		buffer: subsetBuffer,
 		cssEntry: {
 			family,
 			style,
@@ -332,4 +328,8 @@ function buildCss(entries) {
 		.join('\n\n')
 
 	return `${header}\n${body}\n`
+}
+
+function hashString(input) {
+	return crypto.createHash('md5').update(input).digest('hex').slice(0, 8)
 }
