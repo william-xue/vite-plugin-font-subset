@@ -3,11 +3,11 @@
  * 自动扫描项目字符集，将字体文件子集化为 WOFF2 格式
  */
 
+import crypto from 'crypto'
+import fg from 'fast-glob'
 import fs from 'fs'
 import path from 'path'
-import fg from 'fast-glob'
 import subsetFont from 'subset-font'
-import crypto from 'crypto'
 
 export default function fontSubsetPlugin(options = {}) {
 	const {
@@ -30,8 +30,7 @@ export default function fontSubsetPlugin(options = {}) {
 	let isBuild = false
 	let projectRoot = process.cwd()
 	let config = null
-	const assetsToEmit = [] // 存储待发射的资源 { fileName, source }
-	const emittedCssFiles = [] // 存储 CSS 文件名供注入
+	const generatedAssets = [] // 存储生成的字体和 CSS 资源（带 type 字段区分）
 
 	return {
 		name: 'vite-plugin-font-subset',
@@ -43,9 +42,8 @@ export default function fontSubsetPlugin(options = {}) {
 		},
 
 		async buildStart() {
-			assetsToEmit.length = 0
-			emittedCssFiles.length = 0
-			
+			generatedAssets.length = 0
+
 			if (!enabled || !isBuild || fonts.length === 0) {
 				return
 			}
@@ -63,7 +61,7 @@ export default function fontSubsetPlugin(options = {}) {
 					const result = await processFont(fontConfig, chars, outputDir, projectRoot)
 					if (result) {
 						const { cssDir, cssEntry, buffer } = result
-						
+
 						if (!cssGroups.has(cssDir)) {
 							cssGroups.set(cssDir, { entries: [], fonts: [] })
 						}
@@ -76,7 +74,6 @@ export default function fontSubsetPlugin(options = {}) {
 					}
 				}
 
-				const base = config.base || '/'
 				const assetsDir = config.build?.assetsDir || 'assets'
 
 				// 3. 处理资源：生成开发态 CSS，并准备构建态资源
@@ -91,41 +88,44 @@ export default function fontSubsetPlugin(options = {}) {
 
 					// 3.2 准备构建态资源 (计算路径和内容)
 					const fontFileNames = new Map()
-					
-					// 处理字体文件
+
+					// 处理字体文件（发射到 assetsDir/fonts 下）
 					for (const font of fonts) {
 						const hashPrefix = hashString(`${cssDir}:${font.fileName}`)
-						const fileName = `${assetsDir}/fonts/${hashPrefix}-${font.fileName}`
+						const emittedFontFileName = `${hashPrefix}-${font.fileName}`
+						const fileName = `${assetsDir}/fonts/${emittedFontFileName}`
 
-						assetsToEmit.push({
+						generatedAssets.push({
+							type: 'font',
 							fileName,
 							source: font.buffer
 						})
-						
-						fontFileNames.set(font.relativePath, fileName)
+
+						// 这里记录的是“相对于 CSS 文件所在目录”的路径（仅文件名）
+						fontFileNames.set(font.relativePath, emittedFontFileName)
 					}
 
 					// 处理 CSS 文件
 					if (generateCss) {
-						// 更新 CSS 中的字体路径为构建产物路径
+						// 更新 CSS 中的字体路径为构建产物路径（相对于 CSS 文件所在目录）
 						const updatedEntries = entries.map(entry => ({
 							...entry,
 							relativePath: fontFileNames.get(entry.relativePath) || entry.relativePath
 						}))
 
 						// 生成 CSS 内容（路径已更新为构建后的路径）
-						const cssContent = buildCssForBundle(updatedEntries, base)
-						
+						const cssContent = buildCssForBundle(updatedEntries)
+
 						// 计算 CSS 文件名
 						const cssHash = hashString(cssContent)
 						const cssFileName = `${assetsDir}/fonts/font-${cssHash}.css`
-						
-						assetsToEmit.push({
+
+						generatedAssets.push({
+							type: 'css',
 							fileName: cssFileName,
 							source: cssContent
 						})
 
-						emittedCssFiles.push(cssFileName)
 						console.log(`   准备发射 CSS: ${cssFileName}`)
 					}
 				}
@@ -138,12 +138,12 @@ export default function fontSubsetPlugin(options = {}) {
 		},
 
 		generateBundle() {
-			if (!enabled || !isBuild || assetsToEmit.length === 0) {
+			if (!enabled || !isBuild || generatedAssets.length === 0) {
 				return
 			}
 
 			// 统一发射所有资源
-			for (const asset of assetsToEmit) {
+			for (const asset of generatedAssets) {
 				this.emitFile({
 					type: 'asset',
 					fileName: asset.fileName,
@@ -153,7 +153,13 @@ export default function fontSubsetPlugin(options = {}) {
 		},
 
 		transformIndexHtml() {
-			if (!enabled || !isBuild || !generateCss || !injectCss || emittedCssFiles.length === 0) {
+			if (!enabled || !isBuild || !generateCss || !injectCss) {
+				return
+			}
+
+			// 从生成的资源中过滤出 CSS 文件
+			const cssFiles = generatedAssets.filter(asset => asset.type === 'css')
+			if (cssFiles.length === 0) {
 				return
 			}
 
@@ -161,10 +167,10 @@ export default function fontSubsetPlugin(options = {}) {
 			const normalizedBase = base.endsWith('/') ? base : `${base}/`
 			const tags = []
 
-			for (const cssFileName of emittedCssFiles) {
-				const href = `${normalizedBase}${cssFileName}`
+			for (const cssAsset of cssFiles) {
+				const href = `${normalizedBase}${cssAsset.fileName}`
 				console.log(`   自动注入 CSS 到 HTML: ${href}`)
-				
+
 				tags.push({
 					tag: 'link',
 					attrs: {
@@ -287,12 +293,11 @@ async function processFont(fontConfig, chars, outputDir, projectRoot) {
 }
 
 /**
- * 生成构建产物中的 CSS 内容，使用绝对路径
+ * 生成构建产物中的 CSS 内容，相对于 CSS 文件所在目录
  */
-function buildCssForBundle(entries, base) {
+function buildCssForBundle(entries) {
 	const header = '/* 此文件由 vite-plugin-font-subset 自动生成，请勿手动修改 */'
-	const normalizedBase = base.endsWith('/') ? base : `${base}/`
-	
+
 	const ordered = [...entries].sort((a, b) => {
 		if (a.family !== b.family) return a.family.localeCompare(b.family, 'zh-Hans')
 		if (a.weight !== b.weight) return a.weight - b.weight
@@ -301,11 +306,11 @@ function buildCssForBundle(entries, base) {
 
 	const body = ordered
 		.map(({ family, style, weight, relativePath }) => `@font-face {
-  font-family: '${family}';
-  font-style: ${style};
-  font-weight: ${weight};
-  font-display: swap;
-  src: url('${normalizedBase}${relativePath}') format('woff2');
+	font-family: '${family}';
+	font-style: ${style};
+	font-weight: ${weight};
+	font-display: swap;
+	src: url('./${relativePath}') format('woff2');
 }`)
 		.join('\n\n')
 
@@ -313,7 +318,7 @@ function buildCssForBundle(entries, base) {
 }
 
 /**
- * 生成 font.css 内容，按 family/weight/ style 保证稳定顺序
+ * 生成 font.css 内容，按 family/weight/style 保证稳定顺序
  */
 function buildCss(entries) {
 	const header = '/* 此文件由 vite-plugin-font-subset 自动生成，请勿手动修改 */'
