@@ -1,0 +1,35 @@
+# 忽略字体文件（体积较大）
+*.ttf
+*.otf
+*.woff
+*.woff2
+
+# 但保留 subset 目录中的文件（用于开发）
+!subset/
+
+# Node modules
+node_modules/
+
+# 构建产物
+dist/
+dist-ssr/
+
+# 编辑器
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

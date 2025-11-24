@@ -301,6 +301,27 @@ body {
 - Fonts in the same directory share a single `font.css`; fonts in different
   directories will have their own `font.css`.
 
+## 演示项目
+
+查看 [demo](./demo) 目录获取完整的 Vite + Vue 示例项目。
+
+```bash
+# 克隆仓库后
+cd demo
+npm install
+
+# 下载字体文件到 demo/src/fonts/ 目录
+# 推荐：思源黑体 SourceHanSansCN-Regular.otf
+
+# 运行开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
+```
+
+详细说明请查看 [demo/README.md](./demo/README.md)
+
 ## License
 
 [MIT](./LICENSE)
