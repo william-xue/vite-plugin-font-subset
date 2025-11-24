@@ -1,8 +1,11 @@
 # 忽略字体文件（体积较大）
 *.ttf
-*.otf
 *.woff
 *.woff2
+
+# 允许提交 src/fonts 中的 otf 文件（用于 CI 演示）
+# 如果文件过大，考虑使用 Git LFS 或替换为小字体
+!src/fonts/*.otf
 
 # 但保留 subset 目录中的文件（用于开发）
 !subset/

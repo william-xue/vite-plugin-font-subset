@@ -72,11 +72,11 @@ npm run serve
 1. 在 GitHub 仓库中打开 **Settings → Pages**，将 Source 选择为 **GitHub Actions**。
 2. 确保主分支已经包含本目录及工作流文件。
 3. 推送代码后，GitHub Actions 会自动：
-  - 安装根项目和 demo 的依赖
-  - 以 `VITE_DEMO_BASE=/vite-plugin-font-subset/` 构建 demo
-  - 将 `demo/dist` 发布为 Pages 站点
+   - 安装根项目和 demo 的依赖
+   - 以 `VITE_DEMO_BASE=/vite-plugin-font-subset/` 构建 demo
+   - 将 `demo/dist` 发布为 Pages 站点
 
-### 手动本地验证
+**注意**：字体文件已提交到仓库用于 CI 演示。如果替换为其他字体，需确保文件不会太大（建议 < 20MB），否则考虑使用 Git LFS。### 手动本地验证
 
 如果希望在本地模拟 GitHub Pages 的路径行为，可以运行：
 
