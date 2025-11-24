@@ -56,10 +56,12 @@ npm run build
 ### 5. 预览构建结果
 
 ```bash
-npm run preview
+npm run serve
 ```
 
-浏览器访问预览地址查看效果。
+浏览器访问 http://localhost:3000 查看效果。
+
+**注意**：推荐使用 `npm run serve` 而不是 `npm run preview`，因为 Vite preview 对动态生成的 CSS 文件 MIME 类型处理有问题。
 
 ## ⚙️ 配置说明
 

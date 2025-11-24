@@ -3,13 +3,21 @@ import vue from '@vitejs/plugin-vue'
 import fontSubsetPlugin from '../src/index.js'
 
 export default defineConfig({
+  // 使用相对基础路径，方便直接打开 dist 或部署到子路径
+  base: './',
   plugins: [
     vue(),
     fontSubsetPlugin({
       // 配置需要处理的字体
       fonts: [
         {
-          src: 'src/fonts/SourceHanSansCN-Regular.otf', // 源字体路径
+          src: 'src/fonts/SourceHanSansCN-Medium.otf', // 源字体路径
+          family: 'Source Han Sans CN',                  // 字体族名称
+          weight: 400,                                    // 字重
+          style: 'normal'                                 // 样式
+        },
+        {
+          src: 'src/fonts/SourceHanSansCN-Normal.otf', // 源字体路径
           family: 'Source Han Sans CN',                  // 字体族名称
           weight: 400,                                    // 字重
           style: 'normal'                                 // 样式
