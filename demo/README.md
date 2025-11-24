@@ -63,6 +63,31 @@ npm run serve
 
 **注意**：推荐使用 `npm run serve` 而不是 `npm run preview`，因为 Vite preview 对动态生成的 CSS 文件 MIME 类型处理有问题。
 
+## 🌐 部署到 GitHub Pages
+
+项目已经内置 `.github/workflows/deploy-demo.yml`，会在 `main` 分支更新时自动构建 `demo` 并部署到 GitHub Pages。
+
+### 配置步骤
+
+1. 在 GitHub 仓库中打开 **Settings → Pages**，将 Source 选择为 **GitHub Actions**。
+2. 确保主分支已经包含本目录及工作流文件。
+3. 推送代码后，GitHub Actions 会自动：
+  - 安装根项目和 demo 的依赖
+  - 以 `VITE_DEMO_BASE=/vite-plugin-font-subset/` 构建 demo
+  - 将 `demo/dist` 发布为 Pages 站点
+
+### 手动本地验证
+
+如果希望在本地模拟 GitHub Pages 的路径行为，可以运行：
+
+```bash
+cd demo
+VITE_DEMO_BASE=/vite-plugin-font-subset/ pnpm build
+npm run serve
+```
+
+浏览器访问 http://localhost:3000/vite-plugin-font-subset/ 验证资源路径是否正确。
+
 ## ⚙️ 配置说明
 
 在 `vite.config.js` 中配置插件：

@@ -2,9 +2,11 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import fontSubsetPlugin from '../src/index.js'
 
+const demoBase = process.env.VITE_DEMO_BASE ?? '/'
+
 export default defineConfig({
-  // 使用相对基础路径，方便直接打开 dist 或部署到子路径
-  base: './',
+  // 允许通过环境变量自定义基础路径（GitHub Pages 等场景）
+  base: demoBase,
   plugins: [
     vue(),
     fontSubsetPlugin({
