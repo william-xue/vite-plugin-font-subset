@@ -7,7 +7,7 @@ import crypto from 'crypto'
 import fg from 'fast-glob'
 import fs from 'fs'
 import path from 'path'
-import subsetFont from 'subset-font'
+import { subsetFont } from './core/subsetFont.js'
 
 export default function fontSubsetPlugin(options = {}) {
 	const {
@@ -257,32 +257,29 @@ async function processFont(fontConfig, chars, outputDir, projectRoot) {
 	console.log(`\n🔄 处理字体: ${path.basename(srcPath)}`)
 	console.log(`   输出路径: ${path.relative(projectRoot, outputPath)}`)
 
-	// 读取源字体
-	const fontBuffer = fs.readFileSync(srcPath)
-	const text = Array.from(chars).join('')
+	const charset = Array.from(chars).join('')
 
-	// 生成子集
-	const subsetBuffer = await subsetFont(fontBuffer, text, {
-		targetFormat: 'woff2'
+	const result = await subsetFont({
+		input: srcPath,
+		output: outputPath,
+		charset,
+		format: 'woff2'
 	})
 
-	// 写入文件
-	fs.writeFileSync(outputPath, subsetBuffer)
-
-	const originalSize = (fontBuffer.length / 1024).toFixed(2)
-	const subsetSize = (subsetBuffer.length / 1024).toFixed(2)
-	const ratio = ((1 - subsetBuffer.length / fontBuffer.length) * 100).toFixed(1)
+	const originalSize = (result.originalSize / 1024).toFixed(2)
+	const subsetSize = (result.subsetSize / 1024).toFixed(2)
+	const ratio = (result.compressionRatio * 100).toFixed(1)
 
 	console.log(`   原始大小: ${originalSize} KB`)
 	console.log(`   子集大小: ${subsetSize} KB`)
 	console.log(`   压缩率: ${ratio}%`)
 
 	const cssDir = srcDir
-	const relativePath = path.relative(cssDir, outputPath).replace(/\\/g, '/')
+	const relativePath = path.relative(cssDir, result.outputPath).replace(/\\/g, '/')
 
 	return {
 		cssDir,
-		buffer: subsetBuffer,
+		buffer: result.buffer,
 		cssEntry: {
 			family,
 			style,
