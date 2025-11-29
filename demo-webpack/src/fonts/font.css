@@ -1,0 +1,8 @@
+/* 此文件由 vite-plugin-font-subset 自动生成，请勿手动修改 */
+@font-face {
+  font-family: 'Source Han Sans CN';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./subset/SourceHanSansCN-Medium.woff2') format('woff2');
+}

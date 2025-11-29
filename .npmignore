@@ -1,0 +1,32 @@
+# 源代码
+src/
+tsup.config.ts
+*.tsbuildinfo
+
+# 演示项目
+demo-*/
+demo/
+
+# 开发配置
+.vscode/
+.git/
+.github/
+.codeiumignore
+
+# 依赖目录
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# 测试和文档
+test/
+tests/
+docs/
+*.md
+!README.md
+
+# 临时文件
+*.log
+.DS_Store
+.env*

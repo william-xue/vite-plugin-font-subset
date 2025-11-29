@@ -1,0 +1,22 @@
+{
+  "name": "rollup-font-subset-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rollup -c",
+    "serve": "serve dist -l 3002"
+  },
+  "dependencies": {
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-html": "^1.0.3",
+    "rollup-plugin-vue": "^6.0.0",
+    "rollup": "^4.9.0",
+    "serve": "^14.2.5"
+  }
+}

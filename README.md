@@ -1,6 +1,13 @@
 # @fe-fast/vite-plugin-font-subset
 
-> 基于项目实际使用字符自动对子集化字体并生成 WOFF2，适用于 Vite 项目。
+> 🚀 Font subsetting plugin for Vite, Webpack, Rollup & Rspack - 基于项目实际使用字符自动子集化字体并生成 WOFF2
+
+## 🌟 Multi-Tool Support
+
+- ✅ **Vite** - 原生支持，Chrome DevTools 验证
+- ✅ **Webpack** - 完全支持，无 deprecation 警告  
+- ✅ **Rollup** - 完全支持，库打包优化
+- ✅ **Rspack** - 兼容支持，使用 Webpack 适配器
 
 ## 特性
 
@@ -9,7 +16,7 @@
 - **自动生成 CSS**：在字体所在目录生成统一的 `font.css`，包含 `@font-face` 声明。
 - **按目录合并**：同一目录下多字体会合并到一个 `font.css` 中，避免互相覆盖。
 - **可选自动注入**：构建时可自动把生成的 `font.css` 注入 HTML，无需手动引入。
-- **仅在构建阶段运行**：默认只在 `vite build` 时执行，不影响开发速度。
+- **仅在构建阶段运行**：默认只在生产构建时执行，不影响开发速度。
 
 ## 安装
 
@@ -22,16 +29,124 @@ pnpm add @fe-fast/vite-plugin-font-subset -D
 yarn add @fe-fast/vite-plugin-font-subset -D
 ```
 
-> 兼容旧包名 `vite-plugin-font-subset`，但后续只维护 `@fe-fast/vite-plugin-font-subset`。
+## 使用
 
-## 基本使用
+### Vite
 
-在 `vite.config.ts` / `vite.config.mts` 中引入：
-
-```ts
+```js
+// vite.config.js
 import { defineConfig } from 'vite'
-import fontSubset from '@fe-fast/vite-plugin-font-subset'
+import fontSubsetPlugin from '@fe-fast/vite-plugin-font-subset'
 
+export default defineConfig({
+  plugins: [
+    fontSubsetPlugin({
+      fonts: [
+        {
+          src: 'src/fonts/SourceHanSansCN-Medium.otf',
+          family: 'Source Han Sans CN',
+          weight: 400,
+          style: 'normal'
+        }
+      ],
+      scanDirs: ['src/**/*.{vue,js,ts,jsx,tsx,json,scss,less,css}'],
+      outputDir: 'subset',
+      generateCss: true,
+      injectCss: true,
+      extraChars: '①②③④⑤⑥⑦⑧⑨⑩',
+      enabled: true
+    })
+  ]
+})
+```
+
+### Webpack
+
+```js
+// webpack.config.js
+import FontSubsetPlugin from '@fe-fast/vite-plugin-font-subset/webpack'
+
+module.exports = {
+  plugins: [
+    new FontSubsetPlugin({
+      fonts: [
+        {
+          src: 'src/fonts/SourceHanSansCN-Medium.otf',
+          family: 'Source Han Sans CN',
+          weight: 400,
+          style: 'normal'
+        }
+      ],
+      scanDirs: ['src/**/*.{vue,js,ts,jsx,tsx,json,scss,less,css}'],
+      outputDir: 'subset',
+      generateCss: true,
+      injectCss: true,
+      extraChars: '①②③④⑤⑥⑦⑧⑨⑩',
+      enabled: true
+    })
+  ]
+}
+```
+
+### Rollup
+
+```js
+// rollup.config.js
+import fontSubsetPlugin from '@fe-fast/vite-plugin-font-subset/rollup'
+
+export default {
+  plugins: [
+    fontSubsetPlugin({
+      fonts: [
+        {
+          src: 'src/fonts/SourceHanSansCN-Medium.otf',
+          family: 'Source Han Sans CN',
+          weight: 400,
+          style: 'normal'
+        }
+      ],
+      scanDirs: ['src/**/*.{vue,js,ts,jsx,tsx,json,scss,less,css}'],
+      outputDir: 'subset',
+      generateCss: true,
+      extraChars: '①②③④⑤⑥⑦⑧⑨⑩',
+      enabled: true
+    })
+  ]
+}
+```
+
+### Rspack
+
+```js
+// rspack.config.js
+// Rspack 兼容 Webpack 插件 API
+import FontSubsetPlugin from '@fe-fast/vite-plugin-font-subset/webpack'
+
+export default {
+  plugins: [
+    new FontSubsetPlugin({
+      fonts: [
+        {
+          src: 'src/fonts/SourceHanSansCN-Medium.otf',
+          family: 'Source Han Sans CN',
+          weight: 400,
+          style: 'normal'
+        }
+      ],
+      scanDirs: ['src/**/*.{vue,js,ts,jsx,tsx,json,scss,less,css}'],
+      outputDir: 'subset',
+      generateCss: true,
+      injectCss: true,
+      extraChars: '①②③④⑤⑥⑦⑧⑨⑩',
+      enabled: true
+    })
+  ]
+}
+```
+
+## 配置选项
+
+```js
 export default defineConfig({
   plugins: [
     fontSubset({
