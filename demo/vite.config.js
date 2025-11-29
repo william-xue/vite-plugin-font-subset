@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
+import fontSubsetPlugin from '@fe-fast/vite-plugin-font-subset'
 import vue from '@vitejs/plugin-vue'
-import fontSubsetPlugin from '../src/index.js'
+import { defineConfig } from 'vite'
 
 const demoBase = process.env.VITE_DEMO_BASE ?? '/'
 

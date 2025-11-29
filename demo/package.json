@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "vue": "^3.4.0",
-    "vue-i18n": "^9.14.5"
+    "vue-i18n": "^9.14.5",
+    "@fe-fast/vite-plugin-font-subset": "^1.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
