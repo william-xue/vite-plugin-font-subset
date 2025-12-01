@@ -1,6 +1,6 @@
 {
   "name": "@fe-fast/vite-plugin-font-subset",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Font subsetting plugin for Vite, Webpack, Rollup & Rspack - 基于项目实际使用字符自动子集化字体并生成 WOFF2",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -33,7 +33,9 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "prepublishOnly": "npm run build",
+    "release": "npm run build && npm publish"
   },
   "keywords": [
     "vite",

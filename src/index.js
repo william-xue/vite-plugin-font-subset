@@ -23,6 +23,8 @@ export default function fontSubsetPlugin(options = {}) {
 		injectCss = true,
 		// 额外字符集
 		extraChars = '',
+		// 字符集预设 (可选)
+		preset = null,
 		// 是否启用（默认仅在生产构建时启用）
 		enabled = true
 	} = options
@@ -52,7 +54,7 @@ export default function fontSubsetPlugin(options = {}) {
 
 			try {
 				// 1. 收集字符集
-				const chars = await collectCharacters(scanDirs, extraChars, projectRoot)
+				const chars = await collectCharacters(scanDirs, extraChars, preset, projectRoot)
 				console.log(`📊 收集到 ${chars.size} 个唯一字符`)
 
 				// 2. 处理每个字体，收集信息
@@ -189,14 +191,14 @@ export default function fontSubsetPlugin(options = {}) {
 /**
  * 收集项目中使用的所有字符
  */
-async function collectCharacters(scanDirs, extraChars, rootDir) {
+async function collectCharacters(scanDirs, extraChars, preset, rootDir) {
 	const chars = new Set()
 
-	// 使用数组 join，避免引号冲突导致的语法错误
+	// 1. 添加基础字符集
 	const baseChars = [
 		'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
 		"!@#$%^&*()_+-=[]{}|;:'\",.<>?/~`",
-		'，。！？；：“”‘’（）【】《》、·—…',
+		`，。！？；：""''（）【】《》、·—…`,
 		' \n\t'
 	].join('')
 
@@ -204,12 +206,31 @@ async function collectCharacters(scanDirs, extraChars, rootDir) {
 		chars.add(ch)
 	}
 
+	// 2. 添加预设字符集
+	if (preset) {
+		try {
+			const presetChars = getPresetChars(preset)
+			console.log(`📋 使用预设字符集: ${preset}`)
+			console.log(`   ${PRESET_INFO[preset]?.name || preset} - ${PRESET_INFO[preset]?.description || ''}`)
+			console.log(`   预计字体大小: ${PRESET_INFO[preset]?.estimatedSize || '未知'}`)
+			
+			for (const ch of presetChars) {
+				chars.add(ch)
+			}
+		} catch (error) {
+			console.warn(`⚠️  预设字符集加载失败: ${error.message}`)
+			console.log('   将继续使用扫描的字符...')
+		}
+	}
+
+	// 3. 添加额外字符
 	if (extraChars) {
 		for (const ch of extraChars) chars.add(ch)
 	}
 
+	// 4. 扫描项目文件收集字符
 	const files = await fg(scanDirs, { absolute: true, dot: true, cwd: rootDir })
-
+	
 	for (const file of files) {
 		try {
 			const content = fs.readFileSync(file, 'utf-8')
