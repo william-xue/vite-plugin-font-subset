@@ -3,6 +3,10 @@ src/
 tsup.config.ts
 *.tsbuildinfo
 
+.github
+.serena
+.windsurf
+
 # 演示项目
 demo-*/
 demo/
