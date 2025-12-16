@@ -109,11 +109,13 @@ export default function fontSubsetPlugin(options = {}) {
 
 					// 处理 CSS 文件
 					if (generateCss) {
-					// 在构建产物中，CSS 和字体都在 ${assetsDir}/fonts/ 目录下
-					// 所以 URL 应该是相对于该目录的相对路径（即同目录引用）
-					const updatedEntries = entries.map(entry => ({
-						...entry,
-						// 使用 fontFileNames 中的值，它就是相对于 CSS 文件的相对路径（同目录）
+						// 在构建产物中，CSS 和字体都在 ${assetsDir}/fonts/ 目录下
+						// 所以 URL 应该是相对于该目录的相对路径（即同目录引用）
+						const updatedEntries = entries.map(entry => ({
+							...entry,
+							// 使用 fontFileNames 中的值，它就是相对于 CSS 文件的相对路径（同目录）
+							relativePath: fontFileNames.get(entry.relativePath) || entry.relativePath
+						}))
 
 						// 生成 CSS 内容（路径已更新为构建后的路径）
 						const cssContent = buildCssForBundle(updatedEntries)
