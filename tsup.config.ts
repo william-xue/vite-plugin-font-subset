@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-	
+
 	entry: {
 		'index': 'src/index.js',                    // 默认 Vite 适配器（向后兼容）
 		'adapters/vite/index': 'src/adapters/vite/index.js',      // Vite 适配器
