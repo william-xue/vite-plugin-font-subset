@@ -10,6 +10,7 @@ export default defineConfig({
 		'presets/index': 'src/presets/index.js'     // 预设字符集模块
 	},
 	format: ['cjs', 'esm'],
+	
 	dts: true,
 	clean: true,
 	splitting: false,
