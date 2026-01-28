@@ -8,6 +8,7 @@ import fg from 'fast-glob'
 import fs from 'fs'
 import path from 'path'
 import { subsetFont } from './core/subsetFont.js'
+import { getPresetChars, PRESET_INFO } from './presets/index.js'
 
 export default function fontSubsetPlugin(options = {}) {
 	const {
